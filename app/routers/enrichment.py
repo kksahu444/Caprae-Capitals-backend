@@ -74,7 +74,7 @@ async def trigger_email_enrichment(company_id: str):
     """
     # Import here to avoid circular imports
     from app.db_mongo import get_business_by_id
-    from app.infrastructure.queue.tasks.enrichment_tasks import enrich_lead_email_task
+    from app.celery_tasks.enrichment_tasks import enrich_lead_email_task
     
     # Verify company exists
     company = get_business_by_id(company_id)
@@ -232,7 +232,7 @@ async def trigger_batch_enrichment(limit: int = 100):
     }
     ```
     """
-    from app.infrastructure.queue.tasks.enrichment_tasks import batch_enrich_emails_task
+    from app.celery_tasks.enrichment_tasks import batch_enrich_emails_task
     
     # Validate limit
     if limit > 1000:

@@ -5,7 +5,7 @@ from datetime import datetime
 from pymongo import MongoClient, ASCENDING, errors
 from pymongo.collection import Collection
 from pymongo.database import Database
-from utils.config import MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION, DB_UPSERT_ON_INSERT
+from app.utils.config import MONGO_URI, MONGO_DB_NAME, MONGO_COLLECTION, DB_UPSERT_ON_INSERT
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,11 @@ def get_collection() -> Collection:
 
 def create_indexes():
     """Create MongoDB indexes for performance and deduplication."""
-    collection = get_collection()
+    global _collection
+    if _collection is None:
+        db = get_database()
+        _collection = db[MONGO_COLLECTION]
+    collection = _collection
     
     try:
         # Unique index on google_maps_url for deduplication
@@ -440,11 +444,11 @@ def search_businesses(
     
     if has_phone is True:
         # Filter for businesses with non-empty phone
-        filters["phone"] = {"$exists": True, "$ne": "", "$ne": None}
+        filters["phone"] = {"$exists": True, "$nin": [None, ""]}
     
     if has_website is True:
         # Filter for businesses with non-empty website
-        filters["website"] = {"$exists": True, "$ne": "", "$ne": None}
+        filters["website"] = {"$exists": True, "$nin": [None, ""]}
     
     if min_rating is not None:
         # Filter by minimum rating
@@ -500,10 +504,10 @@ def get_search_count(
         filters["category"] = {"$regex": category, "$options": "i"}
     
     if has_phone is True:
-        filters["phone"] = {"$exists": True, "$ne": "", "$ne": None}
+        filters["phone"] = {"$exists": True, "$nin": [None, ""]}
     
     if has_website is True:
-        filters["website"] = {"$exists": True, "$ne": "", "$ne": None}
+        filters["website"] = {"$exists": True, "$nin": [None, ""]}
     
     if min_rating is not None:
         filters["rating"] = {"$gte": min_rating}
@@ -533,12 +537,8 @@ def upsert_business(business_data: Dict) -> bool:
     return save_business(business_data)
 
 
-# Initialize connection and indexes on module import
-try:
-    create_indexes()
-except Exception as e:
-    logger.warning(f"Could not initialize MongoDB on import: {e}")
-    logger.warning("MongoDB will be initialized on first use")
+# Note: Indexes are created lazily on first get_collection() call
+# rather than on module import, to avoid failures during testing.
 
 
 # NEW FUNCTIONS FOR FEATURE F: Data Quality & Search Optimization

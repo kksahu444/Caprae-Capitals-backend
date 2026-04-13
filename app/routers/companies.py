@@ -56,22 +56,22 @@ async def list_companies(
     - Pagination: `?limit=50&offset=100`
     """
     coll = get_collection()
-    filters = {}
+    conditions = []
     
     # Text search in name or category
     if query:
-        filters["$or"] = [
+        conditions.append({"$or": [
             {"business_name": _regex(query)},
             {"category": _regex(query)}
-        ]
+        ]})
     
     # Location filter (searches in address field)
     if location:
-        filters["address"] = _regex(location)
+        conditions.append({"address": _regex(location)})
     
     # Category exact match (case-insensitive)
     if category:
-        filters["category"] = _regex(category)
+        conditions.append({"category": _regex(category)})
     
     # Rating range filter
     if rating_min is not None or rating_max is not None:
@@ -80,31 +80,34 @@ async def list_companies(
             rfilter["$gte"] = rating_min
         if rating_max is not None:
             rfilter["$lte"] = rating_max
-        filters["rating"] = rfilter
+        conditions.append({"rating": rfilter})
     
-    # Website filter
+    # Website filter (fixed: was using duplicate $ne dict keys)
     if has_website is True:
-        filters["website"] = {"$exists": True, "$ne": None, "$ne": ""}
+        conditions.append({"website": {"$exists": True, "$nin": [None, ""]}})
     elif has_website is False:
-        filters["$or"] = [
+        conditions.append({"$or": [
             {"website": {"$exists": False}},
             {"website": None},
             {"website": ""}
-        ]
+        ]})
     
-    # Phone filter
+    # Phone filter (fixed: was using duplicate $ne dict keys)
     if has_phone is True:
-        filters["phone"] = {"$exists": True, "$ne": None, "$ne": ""}
+        conditions.append({"phone": {"$exists": True, "$nin": [None, ""]}})
     elif has_phone is False:
-        filters["$or"] = [
+        conditions.append({"$or": [
             {"phone": {"$exists": False}},
             {"phone": None},
             {"phone": ""}
-        ]
+        ]})
     
     # Services filter (array contains any of the specified services)
     if services:
-        filters["services"] = {"$in": services}
+        conditions.append({"services": {"$in": services}})
+    
+    # Build final filter using $and to avoid key conflicts
+    filters = {"$and": conditions} if conditions else {}
     
     # Sort configuration (prevent injection)
     allowed_sorts = {"rating", "review_count", "created_at", "business_name"}
@@ -236,26 +239,28 @@ async def export_csv(
     **Example:** `/companies/export/csv?query=coffee&location=Austin&limit=500`
     """
     coll = get_collection()
-    filters = {}
+    conditions = []
     
     # Apply same filters as list endpoint
     if query:
-        filters["$or"] = [
+        conditions.append({"$or": [
             {"business_name": _regex(query)},
             {"category": _regex(query)}
-        ]
+        ]})
     
     if location:
-        filters["address"] = _regex(location)
+        conditions.append({"address": _regex(location)})
     
     if category:
-        filters["category"] = _regex(category)
+        conditions.append({"category": _regex(category)})
     
     if rating_min is not None:
-        filters["rating"] = {"$gte": rating_min}
+        conditions.append({"rating": {"$gte": rating_min}})
     
     if has_website is True:
-        filters["website"] = {"$exists": True, "$ne": None, "$ne": ""}
+        conditions.append({"website": {"$exists": True, "$nin": [None, ""]}})
+    
+    filters = {"$and": conditions} if conditions else {}
     
     try:
         cursor = coll.find(filters).limit(limit)
@@ -322,12 +327,12 @@ async def get_stats():
         
         # Companies with website
         with_website = await coll.count_documents({
-            "website": {"$exists": True, "$ne": None, "$ne": ""}
+            "website": {"$exists": True, "$nin": [None, ""]}
         })
         
         # Companies with phone
         with_phone = await coll.count_documents({
-            "phone": {"$exists": True, "$ne": None, "$ne": ""}
+            "phone": {"$exists": True, "$nin": [None, ""]}
         })
         
         # Average rating (using aggregation)

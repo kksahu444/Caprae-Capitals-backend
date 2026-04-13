@@ -5,21 +5,21 @@ from typing import Any, List
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 
-from celery_tasks.tasks import (
+from app.celery_tasks.tasks import (
     scrape_leads,
     scrape_leads_from_google_maps,
     scrape_leads_from_google_maps_crawlee,
 )
 # MongoDB (primary) and SQLite (backup) imports
 try:
-    from db_mongo import get_all_businesses, get_business_count
+    from app.db_mongo import get_all_businesses, get_business_count
     USE_MONGODB = True
 except ImportError:
-    from db import get_all_businesses, get_business_count
+    from app.db import get_all_businesses, get_business_count  # type: ignore
     USE_MONGODB = False
     print("Warning: MongoDB not available, falling back to SQLite")
 
-from schemas.scraper import (
+from app.schemas.scraper import (
     GoogleMapsLeadRequest,
     LeadRequest,
     LeadResponse,

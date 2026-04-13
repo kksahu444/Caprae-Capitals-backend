@@ -136,7 +136,7 @@ def batch_enrich_emails_task(limit: int = 100):
         # Find leads with website but no enriched emails
         leads_cursor = db.businesses.find(
             {
-                'website': {'$exists': True, '$ne': '', '$ne': None},
+                'website': {'$exists': True, '$nin': [None, '']},
                 '$or': [
                     {'emails': {'$exists': False}},
                     {'emails': {'$size': 0}}

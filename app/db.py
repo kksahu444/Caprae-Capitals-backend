@@ -3,7 +3,7 @@ import sqlite3
 import threading
 from pathlib import Path
 from typing import Dict, Optional, List
-from utils.config import DB_PATH, resolve_path
+from app.utils.config import DB_PATH, resolve_path
 
 # Thread-local storage for database connections
 _local = threading.local()

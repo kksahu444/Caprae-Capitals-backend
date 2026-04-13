@@ -1,3 +1,4 @@
+"""Celery tasks for background scraping and lead generation."""
 from __future__ import annotations
 
 import random
@@ -6,16 +7,14 @@ from typing import List, Optional
 
 from celery import Celery
 
-from config.celery_utils import create_celery
-from scrapers.google_maps_scraper import GoogleMapsScraper
-from crawlers.google_maps_crawlee import run_crawl
-from utils.exceptions import CaptchaDetectedError
+from app.config.celery_utils import create_celery
+
 # MongoDB (primary) and SQLite (backup) imports
 try:
-    from db_mongo import save_business, get_all_businesses, get_business_count
+    from app.db_mongo import save_business, get_all_businesses, get_business_count
     USE_MONGODB = True
 except ImportError:
-    from db import save_business, get_all_businesses, get_business_count
+    from app.db import save_business, get_all_businesses, get_business_count  # type: ignore
     USE_MONGODB = False
     print("Warning: MongoDB not available, falling back to SQLite")
 
@@ -66,6 +65,7 @@ def scrape_leads_from_google_maps(
     proxies = options.get("proxies")
 
     try:
+        from app.scrapers.google_maps_scraper import GoogleMapsScraper
         with GoogleMapsScraper(proxies=proxies, headless=headless) as scraper:
             leads = scraper.scrape(query=query, location=location, max_results=max_results)
         return leads
@@ -106,6 +106,13 @@ def scrape_leads_from_google_maps_crawlee(
     headless = bool(options.get("headless", True))
 
     try:
+        # Lazy import — crawlee/playwright may not be installed
+        from app.crawlers.google_maps_crawlee import run_crawl
+        from app.utils.exceptions import CaptchaDetectedError
+    except ImportError as e:
+        raise RuntimeError(f"Crawlee/Playwright not installed: {e}") from e
+
+    try:
         # Run the Crawlee scraper
         stats = run_crawl(
             query=query,
@@ -126,7 +133,6 @@ def scrape_leads_from_google_maps_crawlee(
         
     except CaptchaDetectedError as exc:
         # CAPTCHA detected - use exponential backoff
-        # Countdown: 5s → 15s → 30s
         retry_count = self.request.retries
         countdown = 5 * (2 ** retry_count)  # 5, 10, 20, 40...
         countdown = min(countdown, 30)  # Cap at 30s

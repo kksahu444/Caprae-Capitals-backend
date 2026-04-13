@@ -8,20 +8,20 @@ from urllib.parse import quote_plus
 from crawlee.playwright_crawler import PlaywrightCrawler, PlaywrightCrawlingContext
 from playwright.async_api import Page, TimeoutError as PlaywrightTimeout
 
-from parsers import parse_card_html, parse_detail_page_html, normalize_phone
-from utils.exceptions import CaptchaDetectedError, DetailPageEnrichmentError
+from app.parsers import parse_card_html, parse_detail_page_html, normalize_phone
+from app.utils.exceptions import CaptchaDetectedError, DetailPageEnrichmentError
 # MongoDB (primary) and SQLite (backup) imports
 try:
-    from db_mongo import save_business, business_exists, is_record_complete
+    from app.db_mongo import save_business, business_exists, is_record_complete
 except ImportError:
-    from db import save_business, business_exists
+    from app.db import save_business, business_exists  # type: ignore
     # Fallback for is_record_complete if not in legacy db.py
     def is_record_complete(business: Dict) -> bool:
         return bool(business.get("phone") and business.get("website"))
     print("Warning: MongoDB not available, using SQLite")
 
-from utils.anti_bot import Rotation, load_lines, DEFAULT_USER_AGENTS, RateLimiter
-from utils.config import (
+from app.utils.anti_bot import Rotation, load_lines, DEFAULT_USER_AGENTS, RateLimiter
+from app.utils.config import (
     PROXY_LIST_PATH,
     USER_AGENTS_PATH,
     HEADLESS,

@@ -2,7 +2,7 @@
 from bs4 import BeautifulSoup
 import re
 from typing import List, Dict, Optional
-from utils.config import PHONE_NORMALIZE_REGEX
+from app.utils.config import PHONE_NORMALIZE_REGEX
 
 
 def normalize_phone(phone_str: Optional[str]) -> Optional[str]:

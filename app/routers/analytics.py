@@ -4,7 +4,7 @@ Analytics and aggregation API endpoints for lead insights.
 from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List, Dict, Any
 from bson import ObjectId
-from app.db_mongo import get_collection
+from app.db_motor import get_collection
 from app.utils.normalization import normalize_business_response, normalize_business_list_response
 import logging
 
@@ -53,7 +53,7 @@ async def get_top_leads(
     pipeline.append({"$limit": limit})
     
     try:
-        top_leads = list(collection.aggregate(pipeline))
+        top_leads = await collection.aggregate(pipeline).to_list(None)
         normalized = normalize_business_list_response(top_leads)
         
         return {
@@ -104,7 +104,7 @@ async def get_counts_per_category_location() -> Dict[str, Any]:
     ]
     
     try:
-        results = list(collection.aggregate(pipeline))
+        results = await collection.aggregate(pipeline).to_list(None)
         
         formatted_results = [
             {
@@ -241,7 +241,7 @@ async def get_summary_statistics() -> Dict[str, Any]:
     ]
     
     try:
-        result = list(collection.aggregate(pipeline))
+        result = await collection.aggregate(pipeline).to_list(None)
         
         if result:
             stats = result[0]
@@ -321,7 +321,7 @@ async def get_tier_distribution(
     pipeline.append({"$sort": {"avg_score": -1}})
     
     try:
-        results = list(collection.aggregate(pipeline))
+        results = await collection.aggregate(pipeline).to_list(None)
         
         # Format results
         distribution = {}
@@ -403,7 +403,7 @@ async def get_completeness_statistics() -> Dict[str, Any]:
     ]
     
     try:
-        result = list(collection.aggregate(pipeline))
+        result = await collection.aggregate(pipeline).to_list(None)
         
         if result:
             data = result[0]
